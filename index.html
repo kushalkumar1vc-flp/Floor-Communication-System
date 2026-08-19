@@ -362,15 +362,17 @@ async function uploadVoice(blob) {
   showNotif('Voice upload ho raha hai...');
   try {
     const fd = new FormData();
-    fd.append('file', blob, 'voice.webm');
+    // rename to mp3 so Cloudinary handles it broadly
+    fd.append('file', blob, 'voice.mp3');
     fd.append('upload_preset', UPLOAD_PRESET);
-    fd.append('resource_type', 'video'); // Cloudinary uses 'video' for audio too
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method:'POST', body:fd });
     const json = await res.json();
-    if (!json.secure_url) throw new Error('Upload failed');
+    if (!json.secure_url) { console.error(json); throw new Error('Upload failed'); }
+    // Force mp3 delivery URL for cross-browser playback
+    const audioUrl = json.secure_url.replace(/\.[^.]+$/, '.mp3');
     const data = await fetchData();
     const msgs = data.messages || [];
-    msgs.push({ senderId:me.id, senderName:me.name, floor:me.floor, role:me.role, text:'🎙️ Voice message', type:'voice', audioUrl:json.secure_url, ts:Date.now() });
+    msgs.push({ senderId:me.id, senderName:me.name, floor:me.floor, role:me.role, text:'🎙️ Voice message', type:'voice', audioUrl, ts:Date.now() });
     if (msgs.length > 100) msgs.splice(0, msgs.length-100);
     await saveData({ messages:msgs, users:data.users||{} });
     lastMsgCount = 0; await poll();

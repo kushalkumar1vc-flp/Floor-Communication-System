@@ -39,10 +39,11 @@ button:active { transform: scale(0.98); }
 .quick-btns button { padding: 6px 10px; font-size: 12px; }
 .online-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .online-pill { font-size: 12px; padding: 3px 10px; border-radius: 99px; border: 1px solid #e5e7eb; background: #f9fafb; color: #374151; }
-.notif { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); background: #1d4ed8; color: white; padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; z-index: 99; display: none; }
-.err { font-size: 12px; color: #dc2626; margin-top: 4px; display: none; }
+.notif { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); background: #1d4ed8; color: white; padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; z-index: 99; display: none; white-space: nowrap; }
+.err { font-size: 12px; color: #dc2626; margin-top: 6px; display: none; }
 hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
 .avatar { width: 38px; height: 38px; border-radius: 50%; background: #dbeafe; color: #1e40af; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; margin-right: 4px; }
 </style>
 </head>
 <body>
@@ -53,7 +54,7 @@ hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
   <div id="login-screen">
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-        <div class="avatar">W</div>
+        <div class="avatar">🏭</div>
         <div>
           <div style="font-size:16px;font-weight:600">Warehouse Messenger</div>
           <div style="font-size:12px;color:#6b7280">Floor communication system</div>
@@ -75,7 +76,7 @@ hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
         <option value="supervisor">Supervisor</option>
       </select>
       <div class="err" id="login-err"></div>
-      <button class="btn-primary" onclick="doLogin()" style="width:100%;margin-top:14px">Login karein</button>
+      <button class="btn-primary" onclick="doLogin()" style="width:100%;margin-top:14px">Login karein →</button>
     </div>
   </div>
 
@@ -87,7 +88,8 @@ hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
           <div class="avatar" id="my-av"></div>
           <div>
             <div style="font-size:14px;font-weight:600" id="my-name-lbl"></div>
-            <div style="display:flex;gap:4px;margin-top:2px">
+            <div style="display:flex;gap:4px;margin-top:2px;align-items:center">
+              <span class="status-dot"></span>
               <span class="floor-badge" id="my-floor-lbl"></span>
               <span class="sup-badge" id="my-role-lbl" style="display:none">Supervisor 👑</span>
             </div>
@@ -97,11 +99,13 @@ hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
       </div>
       <hr>
       <div class="label">Online users</div>
-      <div class="online-list" id="online-list" style="margin-top:6px"></div>
+      <div class="online-list" id="online-list" style="margin-top:6px">
+        <span style="font-size:12px;color:#9ca3af">Load ho raha hai...</span>
+      </div>
     </div>
 
     <div class="card">
-      <div class="label">Quick message</div>
+      <div class="label" style="margin-top:0">Quick message</div>
       <div class="quick-btns" style="margin-top:6px">
         <button onclick="quickMsg('Help chahiye!')">🙋 Help chahiye</button>
         <button onclick="quickMsg('Task complete ✓')">✅ Task complete</button>
@@ -132,25 +136,15 @@ hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
   </div>
 </div>
 
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
 <script>
-// ===== FIREBASE CONFIG — yahan apni values daalo =====
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  databaseURL: "YOUR_DATABASE_URL",
-  projectId: "YOUR_PROJECT_ID",
-};
-// =====================================================
-
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const msgsRef = db.ref('messages');
-const usersRef = db.ref('users');
+const BIN_ID = '6a85579ff5f4af5e29278636';
+const API_KEY = '$2a$10$hRmxzKWgTSABBO.CoSAEr.E3tuUnGSAG7lUbug.BQbX5bWtTaEKv.';
+const BASE_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
 
 let me = null;
-let heartbeatTimer = null;
+let pollTimer = null;
+let lastMsgCount = 0;
+let localMsgs = [];
 
 function initials(name) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
@@ -164,7 +158,77 @@ function showNotif(text) {
   setTimeout(() => el.style.display = 'none', 3500);
 }
 
-function doLogin() {
+async function fetchData() {
+  const r = await fetch(BASE_URL + '/latest', {
+    headers: { 'X-Master-Key': API_KEY, 'X-Bin-Meta': 'false' }
+  });
+  return r.json();
+}
+
+async function saveData(data) {
+  await fetch(BASE_URL, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
+    body: JSON.stringify(data)
+  });
+}
+
+async function poll() {
+  if (!me) return;
+  try {
+    const data = await fetchData();
+    const msgs = data.messages || [];
+    const users = data.users || {};
+
+    // heartbeat
+    users[me.id] = { ...me, ts: Date.now() };
+    const now = Date.now();
+    Object.keys(users).forEach(k => { if (now - users[k].ts > 20000) delete users[k]; });
+
+    // online list
+    const online = Object.values(users);
+    document.getElementById('online-list').innerHTML = online.length
+      ? online.map(u => `<span class="online-pill"><span class="floor-badge ${floorCls(u.floor)}" style="font-size:10px">${u.floor}</span> ${u.name}${u.role==='supervisor'?' 👑':''}</span>`).join('')
+      : '<span style="font-size:12px;color:#9ca3af">Sirf aap online hain</span>';
+
+    // new messages
+    if (msgs.length !== lastMsgCount) {
+      const newMsgs = msgs.slice(lastMsgCount);
+      newMsgs.forEach(m => {
+        if (m.senderId !== me.id) showNotif(`${m.floor} — ${m.senderName}: ${m.text.slice(0,40)}`);
+      });
+      lastMsgCount = msgs.length;
+      localMsgs = msgs;
+      renderMsgs();
+    }
+
+    await saveData({ messages: msgs, users });
+  } catch(e) { console.error(e); }
+}
+
+function renderMsgs() {
+  const container = document.getElementById('msgs');
+  const noMsg = document.getElementById('no-msgs');
+  document.getElementById('msg-count').textContent = localMsgs.length ? `${localMsgs.length} messages` : '';
+  if (!localMsgs.length) { container.innerHTML = ''; noMsg.style.display = 'block'; return; }
+  noMsg.style.display = 'none';
+  container.innerHTML = [...localMsgs].reverse().map(m => {
+    const isOwn = m.senderId === me.id;
+    const cls = isOwn ? 'own' : m.type === 'broadcast' ? 'broadcast' : m.type === 'alert' ? 'alert' : '';
+    const time = new Date(m.ts).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+    const typeLbl = m.type === 'broadcast' ? ' 📣' : m.type === 'alert' ? ' 🚨' : '';
+    return `<div class="msg ${cls}">
+      <div class="msg-meta">
+        <span class="floor-badge ${floorCls(m.floor)}">${m.floor}</span>
+        <strong style="font-size:12px">${m.senderName}</strong>${m.role==='supervisor'?' 👑':''}${typeLbl}
+        <span style="margin-left:auto">${time}</span>
+      </div>
+      <div class="msg-text">${m.text}</div>
+    </div>`;
+  }).join('');
+}
+
+async function doLogin() {
   const name = document.getElementById('login-name').value.trim();
   const floor = document.getElementById('login-floor').value;
   const role = document.getElementById('login-role').value;
@@ -186,53 +250,20 @@ function doLogin() {
     document.getElementById('bc-btn').style.display = 'block';
   }
 
-  // heartbeat
-  const uRef = usersRef.child(me.id);
-  uRef.set({ ...me, ts: Date.now() });
-  uRef.onDisconnect().remove();
-  heartbeatTimer = setInterval(() => uRef.update({ ts: Date.now() }), 5000);
-
-  // online users
-  usersRef.on('value', snap => {
-    const users = snap.val() || {};
-    const now = Date.now();
-    const online = Object.values(users).filter(u => now - u.ts < 15000);
-    document.getElementById('online-list').innerHTML = online.map(u =>
-      `<span class="online-pill">
-        <span class="floor-badge ${floorCls(u.floor)}" style="font-size:10px">${u.floor}</span>
-        ${u.name}${u.role==='supervisor'?' 👑':''}
-      </span>`
-    ).join('');
-  });
-
-  // messages — last 50
-  msgsRef.limitToLast(50).on('child_added', snap => {
-    const m = snap.val();
-    const isOwn = m.senderId === me.id;
-    const cls = isOwn ? 'own' : m.type === 'broadcast' ? 'broadcast' : m.type === 'alert' ? 'alert' : '';
-    const time = new Date(m.ts).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
-    const typeLbl = m.type === 'broadcast' ? ' 📣' : m.type === 'alert' ? ' 🚨' : '';
-    const div = document.createElement('div');
-    div.className = 'msg ' + cls;
-    div.innerHTML = `
-      <div class="msg-meta">
-        <span class="floor-badge ${floorCls(m.floor)}">${m.floor}</span>
-        <strong style="font-size:12px">${m.senderName}</strong>${m.role==='supervisor'?' 👑':''}${typeLbl}
-        <span style="margin-left:auto">${time}</span>
-      </div>
-      <div class="msg-text">${m.text}</div>`;
-    document.getElementById('no-msgs').style.display = 'none';
-    const container = document.getElementById('msgs');
-    container.insertBefore(div, container.firstChild);
-    if (!isOwn) showNotif(`${m.floor} — ${m.senderName}: ${m.text.slice(0,40)}`);
-  });
+  lastMsgCount = 0;
+  await poll();
+  pollTimer = setInterval(poll, 4000);
 }
 
-function doLogout() {
-  if (heartbeatTimer) clearInterval(heartbeatTimer);
-  if (me) usersRef.child(me.id).remove();
-  me = null;
-  usersRef.off(); msgsRef.off();
+async function doLogout() {
+  if (pollTimer) clearInterval(pollTimer);
+  try {
+    const data = await fetchData();
+    const users = data.users || {};
+    delete users[me.id];
+    await saveData({ messages: data.messages || [], users });
+  } catch(e) {}
+  me = null; lastMsgCount = 0; localMsgs = [];
   document.getElementById('main-screen').style.display = 'none';
   document.getElementById('login-screen').style.display = 'block';
   document.getElementById('msgs').innerHTML = '';
@@ -248,11 +279,19 @@ function quickMsg(text) {
   sendMsg('msg');
 }
 
-function sendMsg(type) {
+async function sendMsg(type) {
   const text = document.getElementById('msg-input').value.trim();
   if (!text) return;
-  msgsRef.push({ senderId: me.id, senderName: me.name, floor: me.floor, role: me.role, text, type, ts: Date.now() });
   document.getElementById('msg-input').value = '';
+  try {
+    const data = await fetchData();
+    const msgs = data.messages || [];
+    msgs.push({ senderId: me.id, senderName: me.name, floor: me.floor, role: me.role, text, type, ts: Date.now() });
+    if (msgs.length > 100) msgs.splice(0, msgs.length - 100);
+    await saveData({ messages: msgs, users: data.users || {} });
+    lastMsgCount = 0;
+    await poll();
+  } catch(e) { showNotif('Error! Dobara try karein'); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

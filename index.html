@@ -25,25 +25,34 @@ button:active { transform: scale(0.98); }
 .btn-primary:hover { background: #2563eb; }
 .btn-alert { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 .btn-broadcast { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
-.msg { padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid #e5e7eb; background: #f9fafb; }
+.btn-record { background: #fff; color: #dc2626; border: 2px solid #dc2626; border-radius: 50%; width: 48px; height: 48px; font-size: 20px; display: flex; align-items: center; justify-content: center; padding: 0; }
+.btn-record.recording { background: #dc2626; color: white; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+.msg { padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid #e5e7eb; background: #f9fafb; position: relative; }
 .msg.broadcast { border-color: #c4b5fd; background: #ede9fe; }
 .msg.alert { border-color: #fca5a5; background: #fee2e2; }
 .msg.own { background: #eff6ff; border-color: #bfdbfe; }
 .msg-meta { font-size: 11px; color: #6b7280; margin-bottom: 3px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .msg-text { font-size: 14px; color: #111827; }
+.delete-btn { position: absolute; top: 8px; right: 8px; background: none; border: none; color: #9ca3af; font-size: 14px; padding: 2px 6px; cursor: pointer; border-radius: 4px; }
+.delete-btn:hover { background: #fee2e2; color: #dc2626; }
 .label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; margin-top: 12px; }
-.row { display: flex; gap: 8px; }
+.row { display: flex; gap: 8px; align-items: center; }
 .row button { flex: 1; }
-#msgs { max-height: 320px; overflow-y: auto; }
+#msgs { max-height: 380px; overflow-y: auto; }
 .quick-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .quick-btns button { padding: 6px 10px; font-size: 12px; }
 .online-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .online-pill { font-size: 12px; padding: 3px 10px; border-radius: 99px; border: 1px solid #e5e7eb; background: #f9fafb; color: #374151; }
-.notif { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); background: #1d4ed8; color: white; padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; z-index: 99; display: none; white-space: nowrap; }
+.notif { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); background: #1d4ed8; color: white; padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; z-index: 99; display: none; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
 .err { font-size: 12px; color: #dc2626; margin-top: 6px; display: none; }
 hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
 .avatar { width: 38px; height: 38px; border-radius: 50%; background: #dbeafe; color: #1e40af; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; margin-right: 4px; }
+.voice-player { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.voice-player audio { flex: 1; height: 32px; }
+.rec-status { font-size: 12px; color: #dc2626; font-weight: 500; display: none; }
+.rec-timer { font-size: 12px; color: #6b7280; }
 </style>
 </head>
 <body>
@@ -115,13 +124,22 @@ hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
         <button onclick="quickMsg('Machine mein problem hai')">🔧 Machine issue</button>
       </div>
       <hr>
-      <div class="label">Custom message</div>
+      <div class="label">Text message</div>
       <textarea id="msg-input" placeholder="Kuch bhi likhein..." style="margin-top:6px"></textarea>
-      <div class="label" style="margin-top:10px">Bhejein</div>
-      <div class="row" style="margin-top:6px">
+      <div class="row" style="margin-top:8px">
         <button onclick="sendMsg('msg')">📢 Sabko</button>
         <button onclick="sendMsg('alert')" class="btn-alert">🚨 Alert</button>
         <button onclick="sendMsg('broadcast')" class="btn-broadcast" id="bc-btn" style="display:none">📣 Broadcast</button>
+      </div>
+      <hr>
+      <div class="label">Voice message</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+        <button class="btn-record" id="rec-btn" onclick="toggleRecord()" title="Record karo">🎙️</button>
+        <div>
+          <div class="rec-status" id="rec-status">🔴 Recording...</div>
+          <div class="rec-timer" id="rec-timer"></div>
+          <div style="font-size:12px;color:#6b7280" id="rec-hint">Button dabao — voice record hogi</div>
+        </div>
       </div>
     </div>
 
@@ -145,6 +163,33 @@ let me = null;
 let pollTimer = null;
 let lastMsgCount = 0;
 let localMsgs = [];
+let mediaRecorder = null;
+let audioChunks = [];
+let recTimerInterval = null;
+let recSeconds = 0;
+let isRecording = false;
+
+// --- Notification sound (pleasant chime using Web Audio API) ---
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const notes = [523, 659, 784]; // C5, E5, G5 — happy chime
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.18;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.3, t + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+      osc.start(t);
+      osc.stop(t + 0.4);
+    });
+  } catch(e) {}
+}
 
 function initials(name) {
   return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
@@ -180,23 +225,27 @@ async function poll() {
     const msgs = data.messages || [];
     const users = data.users || {};
 
-    // heartbeat
     users[me.id] = { ...me, ts: Date.now() };
     const now = Date.now();
     Object.keys(users).forEach(k => { if (now - users[k].ts > 20000) delete users[k]; });
 
-    // online list
     const online = Object.values(users);
     document.getElementById('online-list').innerHTML = online.length
       ? online.map(u => `<span class="online-pill"><span class="floor-badge ${floorCls(u.floor)}" style="font-size:10px">${u.floor}</span> ${u.name}${u.role==='supervisor'?' 👑':''}</span>`).join('')
       : '<span style="font-size:12px;color:#9ca3af">Sirf aap online hain</span>';
 
-    // new messages
     if (msgs.length !== lastMsgCount) {
-      const newMsgs = msgs.slice(lastMsgCount);
-      newMsgs.forEach(m => {
-        if (m.senderId !== me.id) showNotif(`${m.floor} — ${m.senderName}: ${m.text.slice(0,40)}`);
-      });
+      const isNew = msgs.length > lastMsgCount;
+      if (isNew && lastMsgCount > 0) {
+        const newMsgs = msgs.slice(lastMsgCount);
+        newMsgs.forEach(m => {
+          if (m.senderId !== me.id) {
+            playNotifSound();
+            const preview = m.type === 'voice' ? '🎙️ Voice message' : m.text.slice(0,40);
+            showNotif(`${m.floor} — ${m.senderName}: ${preview}`);
+          }
+        });
+      }
       lastMsgCount = msgs.length;
       localMsgs = msgs;
       renderMsgs();
@@ -212,20 +261,41 @@ function renderMsgs() {
   document.getElementById('msg-count').textContent = localMsgs.length ? `${localMsgs.length} messages` : '';
   if (!localMsgs.length) { container.innerHTML = ''; noMsg.style.display = 'block'; return; }
   noMsg.style.display = 'none';
-  container.innerHTML = [...localMsgs].reverse().map(m => {
+  container.innerHTML = [...localMsgs].reverse().map((m, ri) => {
+    const i = localMsgs.length - 1 - ri; // actual index
     const isOwn = m.senderId === me.id;
     const cls = isOwn ? 'own' : m.type === 'broadcast' ? 'broadcast' : m.type === 'alert' ? 'alert' : '';
     const time = new Date(m.ts).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
-    const typeLbl = m.type === 'broadcast' ? ' 📣' : m.type === 'alert' ? ' 🚨' : '';
+    const typeLbl = m.type === 'broadcast' ? ' 📣' : m.type === 'alert' ? ' 🚨' : m.type === 'voice' ? ' 🎙️' : '';
+    const deleteBtn = `<button class="delete-btn" onclick="deleteMsg(${i})" title="Delete">✕</button>`;
+    let body = '';
+    if (m.type === 'voice' && m.audio) {
+      body = `<div class="voice-player"><audio controls src="${m.audio}" style="flex:1;height:32px"></audio></div>`;
+    } else {
+      body = `<div class="msg-text">${m.text}</div>`;
+    }
     return `<div class="msg ${cls}">
+      ${deleteBtn}
       <div class="msg-meta">
         <span class="floor-badge ${floorCls(m.floor)}">${m.floor}</span>
         <strong style="font-size:12px">${m.senderName}</strong>${m.role==='supervisor'?' 👑':''}${typeLbl}
-        <span style="margin-left:auto">${time}</span>
+        <span style="margin-left:auto;margin-right:20px">${time}</span>
       </div>
-      <div class="msg-text">${m.text}</div>
+      ${body}
     </div>`;
   }).join('');
+}
+
+async function deleteMsg(index) {
+  if (!confirm('Yeh message delete karein?')) return;
+  try {
+    const data = await fetchData();
+    const msgs = data.messages || [];
+    msgs.splice(index, 1);
+    await saveData({ messages: msgs, users: data.users || {} });
+    lastMsgCount = 0;
+    await poll();
+  } catch(e) { showNotif('Delete nahi hua, dobara try karein'); }
 }
 
 async function doLogin() {
@@ -292,6 +362,70 @@ async function sendMsg(type) {
     lastMsgCount = 0;
     await poll();
   } catch(e) { showNotif('Error! Dobara try karein'); }
+}
+
+// --- Voice recording ---
+async function toggleRecord() {
+  if (!isRecording) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        stream.getTracks().forEach(t => t.stop());
+        await sendVoiceMsg(blob);
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      recSeconds = 0;
+      document.getElementById('rec-btn').classList.add('recording');
+      document.getElementById('rec-btn').textContent = '⏹️';
+      document.getElementById('rec-status').style.display = 'block';
+      document.getElementById('rec-hint').style.display = 'none';
+      recTimerInterval = setInterval(() => {
+        recSeconds++;
+        document.getElementById('rec-timer').textContent = `${recSeconds}s`;
+        if (recSeconds >= 60) toggleRecord(); // auto stop at 60s
+      }, 1000);
+    } catch(e) {
+      showNotif('Microphone permission do — browser settings mein');
+    }
+  } else {
+    mediaRecorder.stop();
+    isRecording = false;
+    clearInterval(recTimerInterval);
+    document.getElementById('rec-btn').classList.remove('recording');
+    document.getElementById('rec-btn').textContent = '🎙️';
+    document.getElementById('rec-status').style.display = 'none';
+    document.getElementById('rec-timer').textContent = '';
+    document.getElementById('rec-hint').style.display = 'block';
+  }
+}
+
+async function sendVoiceMsg(blob) {
+  showNotif('Voice message upload ho raha hai...');
+  try {
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result;
+      const data = await fetchData();
+      const msgs = data.messages || [];
+      msgs.push({
+        senderId: me.id, senderName: me.name, floor: me.floor,
+        role: me.role, text: '🎙️ Voice message', type: 'voice',
+        audio: base64, ts: Date.now()
+      });
+      if (msgs.length > 100) msgs.splice(0, msgs.length - 100);
+      await saveData({ messages: msgs, users: data.users || {} });
+      lastMsgCount = 0;
+      await poll();
+      showNotif('Voice message bhej diya ✓');
+    };
+    reader.readAsDataURL(blob);
+  } catch(e) { showNotif('Voice message nahi gaya, dobara try karein'); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

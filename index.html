@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Warehouse Messenger</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }
+#app { max-width: 420px; margin: 0 auto; padding: 1rem; }
+.card { background: white; border: 1px solid #e0e0e0; border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem; }
+.floor-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; display: inline-block; }
+.f1 { background: #dbeafe; color: #1e40af; }
+.f2 { background: #dcfce7; color: #166534; }
+.f3 { background: #fef9c3; color: #854d0e; }
+.f4 { background: #fce7f3; color: #9d174d; }
+.sup-badge { background: #ede9fe; color: #5b21b6; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+input, select, textarea { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; background: white; color: #1a1a1a; font-family: inherit; margin-top: 4px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6; }
+textarea { resize: none; height: 64px; }
+button { padding: 9px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: 1px solid #d1d5db; background: white; color: #1a1a1a; font-family: inherit; }
+button:hover { background: #f3f4f6; }
+button:active { transform: scale(0.98); }
+.btn-primary { background: #3b82f6; color: white; border-color: #3b82f6; }
+.btn-primary:hover { background: #2563eb; }
+.btn-alert { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.btn-broadcast { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+.msg { padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid #e5e7eb; background: #f9fafb; }
+.msg.broadcast { border-color: #c4b5fd; background: #ede9fe; }
+.msg.alert { border-color: #fca5a5; background: #fee2e2; }
+.msg.own { background: #eff6ff; border-color: #bfdbfe; }
+.msg-meta { font-size: 11px; color: #6b7280; margin-bottom: 3px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.msg-text { font-size: 14px; color: #111827; }
+.label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; margin-top: 12px; }
+.row { display: flex; gap: 8px; }
+.row button { flex: 1; }
+#msgs { max-height: 320px; overflow-y: auto; }
+.quick-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.quick-btns button { padding: 6px 10px; font-size: 12px; }
+.online-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.online-pill { font-size: 12px; padding: 3px 10px; border-radius: 99px; border: 1px solid #e5e7eb; background: #f9fafb; color: #374151; }
+.notif { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); background: #1d4ed8; color: white; padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; z-index: 99; display: none; }
+.err { font-size: 12px; color: #dc2626; margin-top: 4px; display: none; }
+hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
+.avatar { width: 38px; height: 38px; border-radius: 50%; background: #dbeafe; color: #1e40af; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="notif" id="notif"></div>
+<div id="app">
+
+  <!-- LOGIN -->
+  <div id="login-screen">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div class="avatar">W</div>
+        <div>
+          <div style="font-size:16px;font-weight:600">Warehouse Messenger</div>
+          <div style="font-size:12px;color:#6b7280">Floor communication system</div>
+        </div>
+      </div>
+      <div class="label">Apna naam</div>
+      <input type="text" id="login-name" placeholder="Jaise: Ravi Kumar" maxlength="30" />
+      <div class="label">Floor</div>
+      <select id="login-floor">
+        <option value="">-- Floor chunein --</option>
+        <option value="F1">Floor 1</option>
+        <option value="F2">Floor 2</option>
+        <option value="F3">Floor 3</option>
+        <option value="F4">Floor 4</option>
+      </select>
+      <div class="label">Role</div>
+      <select id="login-role">
+        <option value="worker">Worker</option>
+        <option value="supervisor">Supervisor</option>
+      </select>
+      <div class="err" id="login-err"></div>
+      <button class="btn-primary" onclick="doLogin()" style="width:100%;margin-top:14px">Login karein</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main-screen" style="display:none">
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="avatar" id="my-av"></div>
+          <div>
+            <div style="font-size:14px;font-weight:600" id="my-name-lbl"></div>
+            <div style="display:flex;gap:4px;margin-top:2px">
+              <span class="floor-badge" id="my-floor-lbl"></span>
+              <span class="sup-badge" id="my-role-lbl" style="display:none">Supervisor 👑</span>
+            </div>
+          </div>
+        </div>
+        <button onclick="doLogout()" style="font-size:12px;padding:5px 10px">Logout</button>
+      </div>
+      <hr>
+      <div class="label">Online users</div>
+      <div class="online-list" id="online-list" style="margin-top:6px"></div>
+    </div>
+
+    <div class="card">
+      <div class="label">Quick message</div>
+      <div class="quick-btns" style="margin-top:6px">
+        <button onclick="quickMsg('Help chahiye!')">🙋 Help chahiye</button>
+        <button onclick="quickMsg('Task complete ✓')">✅ Task complete</button>
+        <button onclick="quickMsg('Break pe ja raha hoon')">☕ Break</button>
+        <button onclick="quickMsg('Issue hai, zaruri baat karni hai')">⚠️ Issue hai</button>
+        <button onclick="quickMsg('Item nahi mil raha')">📦 Item missing</button>
+        <button onclick="quickMsg('Machine mein problem hai')">🔧 Machine issue</button>
+      </div>
+      <hr>
+      <div class="label">Custom message</div>
+      <textarea id="msg-input" placeholder="Kuch bhi likhein..." style="margin-top:6px"></textarea>
+      <div class="label" style="margin-top:10px">Bhejein</div>
+      <div class="row" style="margin-top:6px">
+        <button onclick="sendMsg('msg')">📢 Sabko</button>
+        <button onclick="sendMsg('alert')" class="btn-alert">🚨 Alert</button>
+        <button onclick="sendMsg('broadcast')" class="btn-broadcast" id="bc-btn" style="display:none">📣 Broadcast</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="label" style="margin:0">Live feed</div>
+        <span style="font-size:11px;color:#6b7280" id="msg-count"></span>
+      </div>
+      <div id="msgs" style="margin-top:10px"></div>
+      <div id="no-msgs" style="font-size:13px;color:#9ca3af;text-align:center;padding:1rem">Abhi koi message nahi</div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+<script>
+// ===== FIREBASE CONFIG — yahan apni values daalo =====
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  databaseURL: "YOUR_DATABASE_URL",
+  projectId: "YOUR_PROJECT_ID",
+};
+// =====================================================
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const msgsRef = db.ref('messages');
+const usersRef = db.ref('users');
+
+let me = null;
+let heartbeatTimer = null;
+
+function initials(name) {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+}
+function floorCls(f) { return {F1:'f1',F2:'f2',F3:'f3',F4:'f4'}[f]||'f1'; }
+
+function showNotif(text) {
+  const el = document.getElementById('notif');
+  el.textContent = text;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3500);
+}
+
+function doLogin() {
+  const name = document.getElementById('login-name').value.trim();
+  const floor = document.getElementById('login-floor').value;
+  const role = document.getElementById('login-role').value;
+  const err = document.getElementById('login-err');
+  if (!name) { err.textContent = 'Naam likhein'; err.style.display = 'block'; return; }
+  if (!floor) { err.textContent = 'Floor chunein'; err.style.display = 'block'; return; }
+  err.style.display = 'none';
+
+  me = { id: name.replace(/\s/g,'_') + '_' + Date.now(), name, floor, role };
+
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('main-screen').style.display = 'block';
+  document.getElementById('my-av').textContent = initials(name);
+  document.getElementById('my-name-lbl').textContent = name;
+  const fb = document.getElementById('my-floor-lbl');
+  fb.textContent = floor; fb.className = 'floor-badge ' + floorCls(floor);
+  if (role === 'supervisor') {
+    document.getElementById('my-role-lbl').style.display = 'inline';
+    document.getElementById('bc-btn').style.display = 'block';
+  }
+
+  // heartbeat
+  const uRef = usersRef.child(me.id);
+  uRef.set({ ...me, ts: Date.now() });
+  uRef.onDisconnect().remove();
+  heartbeatTimer = setInterval(() => uRef.update({ ts: Date.now() }), 5000);
+
+  // online users
+  usersRef.on('value', snap => {
+    const users = snap.val() || {};
+    const now = Date.now();
+    const online = Object.values(users).filter(u => now - u.ts < 15000);
+    document.getElementById('online-list').innerHTML = online.map(u =>
+      `<span class="online-pill">
+        <span class="floor-badge ${floorCls(u.floor)}" style="font-size:10px">${u.floor}</span>
+        ${u.name}${u.role==='supervisor'?' 👑':''}
+      </span>`
+    ).join('');
+  });
+
+  // messages — last 50
+  msgsRef.limitToLast(50).on('child_added', snap => {
+    const m = snap.val();
+    const isOwn = m.senderId === me.id;
+    const cls = isOwn ? 'own' : m.type === 'broadcast' ? 'broadcast' : m.type === 'alert' ? 'alert' : '';
+    const time = new Date(m.ts).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+    const typeLbl = m.type === 'broadcast' ? ' 📣' : m.type === 'alert' ? ' 🚨' : '';
+    const div = document.createElement('div');
+    div.className = 'msg ' + cls;
+    div.innerHTML = `
+      <div class="msg-meta">
+        <span class="floor-badge ${floorCls(m.floor)}">${m.floor}</span>
+        <strong style="font-size:12px">${m.senderName}</strong>${m.role==='supervisor'?' 👑':''}${typeLbl}
+        <span style="margin-left:auto">${time}</span>
+      </div>
+      <div class="msg-text">${m.text}</div>`;
+    document.getElementById('no-msgs').style.display = 'none';
+    const container = document.getElementById('msgs');
+    container.insertBefore(div, container.firstChild);
+    if (!isOwn) showNotif(`${m.floor} — ${m.senderName}: ${m.text.slice(0,40)}`);
+  });
+}
+
+function doLogout() {
+  if (heartbeatTimer) clearInterval(heartbeatTimer);
+  if (me) usersRef.child(me.id).remove();
+  me = null;
+  usersRef.off(); msgsRef.off();
+  document.getElementById('main-screen').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'block';
+  document.getElementById('msgs').innerHTML = '';
+  document.getElementById('no-msgs').style.display = 'block';
+  document.getElementById('my-role-lbl').style.display = 'none';
+  document.getElementById('bc-btn').style.display = 'none';
+  document.getElementById('login-name').value = '';
+  document.getElementById('login-floor').value = '';
+}
+
+function quickMsg(text) {
+  document.getElementById('msg-input').value = text;
+  sendMsg('msg');
+}
+
+function sendMsg(type) {
+  const text = document.getElementById('msg-input').value.trim();
+  if (!text) return;
+  msgsRef.push({ senderId: me.id, senderName: me.name, floor: me.floor, role: me.role, text, type, ts: Date.now() });
+  document.getElementById('msg-input').value = '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('msg-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg('msg'); }
+  });
+});
+</script>
+</body>
+</html>

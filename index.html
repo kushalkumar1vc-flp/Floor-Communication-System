@@ -20,9 +20,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6
 textarea { resize: none; height: 64px; }
 button { padding: 9px 16px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; border: 1px solid #d1d5db; background: white; color: #1a1a1a; font-family: inherit; }
 button:hover { background: #f3f4f6; }
-button:active { transform: scale(0.98); }
 .btn-primary { background: #3b82f6; color: white; border-color: #3b82f6; }
-.btn-primary:hover { background: #2563eb; }
 .btn-alert { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 .btn-broadcast { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
 .btn-record { background: #fff; color: #dc2626; border: 2px solid #dc2626; border-radius: 50%; width: 52px; height: 52px; font-size: 22px; display: flex; align-items: center; justify-content: center; padding: 0; flex-shrink: 0; }
@@ -34,34 +32,28 @@ button:active { transform: scale(0.98); }
 .msg.own { background: #eff6ff; border-color: #bfdbfe; }
 .msg-meta { font-size: 11px; color: #6b7280; margin-bottom: 4px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .msg-text { font-size: 14px; color: #111827; }
-.delete-btn { position: absolute; top: 6px; right: 6px; background: none; border: none; color: #9ca3af; font-size: 13px; padding: 2px 6px; cursor: pointer; border-radius: 4px; line-height: 1; }
+.delete-btn { position: absolute; top: 6px; right: 6px; background: none; border: none; color: #9ca3af; font-size: 13px; padding: 2px 6px; cursor: pointer; border-radius: 4px; }
 .delete-btn:hover { background: #fee2e2; color: #dc2626; }
 .label { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; margin-top: 12px; }
-.row { display: flex; gap: 8px; align-items: center; }
+.row { display: flex; gap: 8px; }
 .row button { flex: 1; }
 #msgs { max-height: 400px; overflow-y: auto; }
 .quick-btns { display: flex; flex-wrap: wrap; gap: 6px; }
 .quick-btns button { padding: 6px 10px; font-size: 12px; }
 .online-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .online-pill { font-size: 12px; padding: 3px 10px; border-radius: 99px; border: 1px solid #e5e7eb; background: #f9fafb; color: #374151; }
-.notif { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); background: #1d4ed8; color: white; padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; z-index: 99; display: none; white-space: nowrap; max-width: 90vw; overflow: hidden; text-overflow: ellipsis; }
+.notif { position: fixed; top: 1rem; left: 50%; transform: translateX(-50%); background: #1d4ed8; color: white; padding: 8px 18px; border-radius: 99px; font-size: 13px; font-weight: 500; z-index: 99; display: none; white-space: nowrap; max-width: 90vw; }
 .err { font-size: 12px; color: #dc2626; margin-top: 6px; display: none; }
 hr { border: none; border-top: 1px solid #e5e7eb; margin: 12px 0; }
 .avatar { width: 38px; height: 38px; border-radius: 50%; background: #dbeafe; color: #1e40af; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px; flex-shrink: 0; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; margin-right: 4px; }
-audio { width: 100%; height: 36px; margin-top: 4px; }
+audio { width: 100%; margin-top: 6px; }
 .rec-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
-.rec-info { display: flex; flex-direction: column; gap: 2px; }
-.rec-hint { font-size: 12px; color: #6b7280; }
-.rec-status { font-size: 12px; color: #dc2626; font-weight: 600; display: none; }
-.rec-timer { font-size: 13px; color: #374151; font-weight: 600; }
 </style>
 </head>
 <body>
 <div class="notif" id="notif"></div>
 <div id="app">
-
-  <!-- LOGIN -->
   <div id="login-screen">
     <div class="card">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
@@ -91,7 +83,6 @@ audio { width: 100%; height: 36px; margin-top: 4px; }
     </div>
   </div>
 
-  <!-- MAIN -->
   <div id="main-screen" style="display:none">
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between">
@@ -110,9 +101,7 @@ audio { width: 100%; height: 36px; margin-top: 4px; }
       </div>
       <hr>
       <div class="label">Online users</div>
-      <div class="online-list" id="online-list" style="margin-top:6px">
-        <span style="font-size:12px;color:#9ca3af">Load ho raha hai...</span>
-      </div>
+      <div class="online-list" id="online-list" style="margin-top:6px"></div>
     </div>
 
     <div class="card">
@@ -134,13 +123,13 @@ audio { width: 100%; height: 36px; margin-top: 4px; }
         <button onclick="sendMsg('broadcast')" class="btn-broadcast" id="bc-btn" style="display:none">📣 Broadcast</button>
       </div>
       <hr>
-      <div class="label">Voice message <span style="font-size:10px;color:#9ca3af;font-weight:400">(max 15 sec)</span></div>
+      <div class="label">Voice message <span style="font-weight:400;color:#9ca3af">(max 30 sec)</span></div>
       <div class="rec-row">
         <button class="btn-record" id="rec-btn" onclick="toggleRecord()">🎙️</button>
-        <div class="rec-info">
-          <div class="rec-hint" id="rec-hint">Button dabao aur bolo</div>
-          <div class="rec-status" id="rec-status">🔴 Recording...</div>
-          <div class="rec-timer" id="rec-timer"></div>
+        <div>
+          <div id="rec-hint" style="font-size:12px;color:#6b7280">Button dabao aur bolo</div>
+          <div id="rec-status" style="font-size:12px;color:#dc2626;font-weight:600;display:none">🔴 Recording...</div>
+          <div id="rec-timer" style="font-size:13px;font-weight:600;color:#374151"></div>
         </div>
       </div>
     </div>
@@ -160,92 +149,97 @@ audio { width: 100%; height: 36px; margin-top: 4px; }
 const BIN_ID = '6a85579ff5f4af5e29278636';
 const BIN_KEY = '$2a$10$hRmxzKWgTSABBO.CoSAEr.E3tuUnGSAG7lUbug.BQbX5bWtTaEKv.';
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const CLOUD = 'wzrotfs5';
+const PRESET = 'nvnw9tya';
 
-let me = null, pollTimer = null, lastMsgCount = 0, localMsgs = [];
-let mediaRecorder = null, audioChunks = [], recTimer = null, recSec = 0, isRecording = false;
+let me=null, pollTimer=null, lastMsgCount=0, localMsgs=[];
+let mediaRecorder=null, audioChunks=[], recTimer=null, recSec=0, isRecording=false;
 
 function playChime() {
   try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    [[523,0],[659,0.2],[784,0.4]].forEach(([freq, delay]) => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.type = 'sine'; o.frequency.value = freq;
-      const t = ctx.currentTime + delay;
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.3, t + 0.05);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-      o.start(t); o.stop(t + 0.5);
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    [[523,0],[659,0.2],[784,0.4]].forEach(([f,d])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.connect(g);g.connect(ctx.destination);
+      o.type='sine';o.frequency.value=f;
+      const t=ctx.currentTime+d;
+      g.gain.setValueAtTime(0,t);
+      g.gain.linearRampToValueAtTime(0.3,t+0.05);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+      o.start(t);o.stop(t+0.5);
     });
-  } catch(e) {}
+  }catch(e){}
 }
 
-function showNotif(txt) {
-  const el = document.getElementById('notif');
-  el.textContent = txt; el.style.display = 'block';
-  setTimeout(() => el.style.display = 'none', 3500);
+function showNotif(txt,dur=3500){
+  const el=document.getElementById('notif');
+  el.textContent=txt;el.style.display='block';
+  setTimeout(()=>el.style.display='none',dur);
 }
 
-function initials(n) { return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
-function floorCls(f) { return {F1:'f1',F2:'f2',F3:'f3',F4:'f4'}[f]||'f1'; }
+function initials(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+function floorCls(f){return {F1:'f1',F2:'f2',F3:'f3',F4:'f4'}[f]||'f1';}
 
-async function fetchData() {
-  const r = await fetch(BIN_URL+'/latest', { headers: {'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'} });
+async function fetchData(){
+  const r=await fetch(BIN_URL+'/latest',{headers:{'X-Master-Key':BIN_KEY,'X-Bin-Meta':'false'}});
   return r.json();
 }
-async function saveData(d) {
-  await fetch(BIN_URL, { method:'PUT', headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY}, body:JSON.stringify(d) });
+async function saveData(d){
+  await fetch(BIN_URL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':BIN_KEY},body:JSON.stringify(d)});
 }
 
-async function poll() {
-  if (!me) return;
-  try {
-    const data = await fetchData();
-    const msgs = data.messages || [];
-    const users = data.users || {};
-    users[me.id] = { ...me, ts: Date.now() };
-    const now = Date.now();
-    Object.keys(users).forEach(k => { if (now - users[k].ts > 20000) delete users[k]; });
+async function poll(){
+  if(!me)return;
+  try{
+    const data=await fetchData();
+    const msgs=data.messages||[];
+    const users=data.users||{};
+    users[me.id]={...me,ts:Date.now()};
+    const now=Date.now();
+    Object.keys(users).forEach(k=>{if(now-users[k].ts>20000)delete users[k];});
 
-    const online = Object.values(users);
-    document.getElementById('online-list').innerHTML = online.length
-      ? online.map(u => `<span class="online-pill"><span class="floor-badge ${floorCls(u.floor)}" style="font-size:10px">${u.floor}</span> ${u.name}${u.role==='supervisor'?' 👑':''}</span>`).join('')
-      : '<span style="font-size:12px;color:#9ca3af">Sirf aap online hain</span>';
+    document.getElementById('online-list').innerHTML=Object.values(users).length
+      ?Object.values(users).map(u=>`<span class="online-pill"><span class="floor-badge ${floorCls(u.floor)}" style="font-size:10px">${u.floor}</span> ${u.name}${u.role==='supervisor'?' 👑':''}</span>`).join('')
+      :'<span style="font-size:12px;color:#9ca3af">Sirf aap online hain</span>';
 
-    if (msgs.length !== lastMsgCount) {
-      if (lastMsgCount > 0 && msgs.length > lastMsgCount) {
-        msgs.slice(lastMsgCount).forEach(m => {
-          if (m.senderId !== me.id) {
+    if(msgs.length!==lastMsgCount){
+      if(lastMsgCount>0&&msgs.length>lastMsgCount){
+        msgs.slice(lastMsgCount).forEach(m=>{
+          if(m.senderId!==me.id){
             playChime();
             showNotif(`${m.floor} — ${m.senderName}: ${m.type==='voice'?'🎙️ Voice message':m.text.slice(0,40)}`);
           }
         });
       }
-      lastMsgCount = msgs.length;
-      localMsgs = msgs;
-      renderMsgs();
+      lastMsgCount=msgs.length;localMsgs=msgs;renderMsgs();
     }
-    await saveData({ messages: msgs, users });
-  } catch(e) { console.error(e); }
+    await saveData({messages:msgs,users});
+  }catch(e){console.error(e);}
 }
 
-function renderMsgs() {
-  const container = document.getElementById('msgs');
-  const noMsg = document.getElementById('no-msgs');
-  document.getElementById('msg-count').textContent = localMsgs.length ? `${localMsgs.length} messages` : '';
-  if (!localMsgs.length) { container.innerHTML = ''; noMsg.style.display = 'block'; return; }
-  noMsg.style.display = 'none';
-  container.innerHTML = [...localMsgs].reverse().map((m, ri) => {
-    const i = localMsgs.length - 1 - ri;
-    const isOwn = m.senderId === me.id;
-    const cls = isOwn ? 'own' : m.type==='broadcast' ? 'broadcast' : m.type==='alert' ? 'alert' : '';
-    const time = new Date(m.ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
-    const badge = m.type==='broadcast'?' 📣':m.type==='alert'?' 🚨':m.type==='voice'?' 🎙️':'';
-    let body = '';
-    if (m.type === 'voice' && m.audioData) {
-      body = `<audio controls src="${m.audioData}"></audio>`;
+function renderMsgs(){
+  const container=document.getElementById('msgs');
+  const noMsg=document.getElementById('no-msgs');
+  document.getElementById('msg-count').textContent=localMsgs.length?`${localMsgs.length} messages`:'';
+  if(!localMsgs.length){container.innerHTML='';noMsg.style.display='block';return;}
+  noMsg.style.display='none';
+  container.innerHTML=[...localMsgs].reverse().map((m,ri)=>{
+    const i=localMsgs.length-1-ri;
+    const isOwn=m.senderId===me.id;
+    const cls=isOwn?'own':m.type==='broadcast'?'broadcast':m.type==='alert'?'alert':'';
+    const time=new Date(m.ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    const badge=m.type==='broadcast'?' 📣':m.type==='alert'?' 🚨':m.type==='voice'?' 🎙️':'';
+    let body='';
+    if(m.type==='voice'&&m.audioUrl){
+      // Use original webm URL — modern browsers support it
+      body=`<audio controls preload="metadata">
+        <source src="${m.audioUrl}" type="audio/webm;codecs=opus">
+        <source src="${m.audioUrl}" type="audio/webm">
+        <source src="${m.audioUrl}" type="audio/ogg">
+        Your browser does not support audio.
+      </audio>`;
     } else {
-      body = `<div class="msg-text">${m.text}</div>`;
+      body=`<div class="msg-text">${m.text}</div>`;
     }
     return `<div class="msg ${cls}">
       <button class="delete-btn" onclick="deleteMsg(${i})">✕</button>
@@ -259,43 +253,43 @@ function renderMsgs() {
   }).join('');
 }
 
-async function deleteMsg(i) {
-  if (!confirm('Delete karein?')) return;
-  try {
-    const data = await fetchData();
-    data.messages.splice(i, 1);
+async function deleteMsg(i){
+  if(!confirm('Delete karein?'))return;
+  try{
+    const data=await fetchData();
+    data.messages.splice(i,1);
     await saveData(data);
-    lastMsgCount = 0; await poll();
-  } catch(e) { showNotif('Delete nahi hua'); }
+    lastMsgCount=0;await poll();
+  }catch(e){showNotif('Delete nahi hua');}
 }
 
-async function doLogin() {
-  const name = document.getElementById('login-name').value.trim();
-  const floor = document.getElementById('login-floor').value;
-  const role = document.getElementById('login-role').value;
-  const err = document.getElementById('login-err');
-  if (!name) { err.textContent='Naam likhein'; err.style.display='block'; return; }
-  if (!floor) { err.textContent='Floor chunein'; err.style.display='block'; return; }
-  err.style.display = 'none';
-  me = { id: name.replace(/\s/g,'_')+'_'+Date.now(), name, floor, role };
-  document.getElementById('login-screen').style.display = 'none';
-  document.getElementById('main-screen').style.display = 'block';
-  document.getElementById('my-av').textContent = initials(name);
-  document.getElementById('my-name-lbl').textContent = name;
-  const fb = document.getElementById('my-floor-lbl');
-  fb.textContent = floor; fb.className = 'floor-badge '+floorCls(floor);
-  if (role==='supervisor') {
-    document.getElementById('my-role-lbl').style.display = 'inline';
-    document.getElementById('bc-btn').style.display = 'block';
+async function doLogin(){
+  const name=document.getElementById('login-name').value.trim();
+  const floor=document.getElementById('login-floor').value;
+  const role=document.getElementById('login-role').value;
+  const err=document.getElementById('login-err');
+  if(!name){err.textContent='Naam likhein';err.style.display='block';return;}
+  if(!floor){err.textContent='Floor chunein';err.style.display='block';return;}
+  err.style.display='none';
+  me={id:name.replace(/\s/g,'_')+'_'+Date.now(),name,floor,role};
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('main-screen').style.display='block';
+  document.getElementById('my-av').textContent=initials(name);
+  document.getElementById('my-name-lbl').textContent=name;
+  const fb=document.getElementById('my-floor-lbl');
+  fb.textContent=floor;fb.className='floor-badge '+floorCls(floor);
+  if(role==='supervisor'){
+    document.getElementById('my-role-lbl').style.display='inline';
+    document.getElementById('bc-btn').style.display='block';
   }
-  lastMsgCount = 0; await poll();
-  pollTimer = setInterval(poll, 4000);
+  lastMsgCount=0;await poll();
+  pollTimer=setInterval(poll,4000);
 }
 
-async function doLogout() {
+async function doLogout(){
   clearInterval(pollTimer);
-  try { const d=await fetchData(); delete d.users[me.id]; await saveData(d); } catch(e){}
-  me=null; lastMsgCount=0; localMsgs=[];
+  try{const d=await fetchData();delete d.users[me.id];await saveData(d);}catch(e){}
+  me=null;lastMsgCount=0;localMsgs=[];
   document.getElementById('main-screen').style.display='none';
   document.getElementById('login-screen').style.display='block';
   document.getElementById('msgs').innerHTML='';
@@ -306,79 +300,81 @@ async function doLogout() {
   document.getElementById('login-floor').value='';
 }
 
-function quickMsg(text) { document.getElementById('msg-input').value=text; sendMsg('msg'); }
+function quickMsg(text){document.getElementById('msg-input').value=text;sendMsg('msg');}
 
-async function sendMsg(type) {
-  const text = document.getElementById('msg-input').value.trim();
-  if (!text) return;
-  document.getElementById('msg-input').value = '';
-  try {
-    const data = await fetchData();
-    const msgs = data.messages || [];
-    msgs.push({ senderId:me.id, senderName:me.name, floor:me.floor, role:me.role, text, type, ts:Date.now() });
-    if (msgs.length > 100) msgs.splice(0, msgs.length-100);
-    await saveData({ messages:msgs, users:data.users||{} });
-    lastMsgCount = 0; await poll();
-  } catch(e) { showNotif('Error! Dobara try karein'); }
+async function sendMsg(type){
+  const text=document.getElementById('msg-input').value.trim();
+  if(!text)return;
+  document.getElementById('msg-input').value='';
+  try{
+    const data=await fetchData();
+    const msgs=data.messages||[];
+    msgs.push({senderId:me.id,senderName:me.name,floor:me.floor,role:me.role,text,type,ts:Date.now()});
+    if(msgs.length>100)msgs.splice(0,msgs.length-100);
+    await saveData({messages:msgs,users:data.users||{}});
+    lastMsgCount=0;await poll();
+  }catch(e){showNotif('Error! Dobara try karein');}
 }
 
-async function toggleRecord() {
-  if (!isRecording) {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioChunks = [];
-      // Pick best supported format
-      const mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg']
-        .find(t => MediaRecorder.isTypeSupported(t)) || '';
-      mediaRecorder = new MediaRecorder(stream, mime ? {mimeType: mime} : {});
-      mediaRecorder.ondataavailable = e => { if(e.data.size > 0) audioChunks.push(e.data); };
-      mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-        // Convert to base64 data URL — works in all browsers directly
-        const reader = new FileReader();
-        reader.onload = async () => {
-          const audioData = reader.result; // this is a data URL like "data:audio/webm;base64,..."
-          try {
-            const data = await fetchData();
-            const msgs = data.messages || [];
-            msgs.push({ senderId:me.id, senderName:me.name, floor:me.floor, role:me.role, text:'🎙️ Voice message', type:'voice', audioData, ts:Date.now() });
-            // Keep only last 20 msgs if voice msgs make it too big; voice msgs are ~50KB each
-            if (msgs.length > 50) msgs.splice(0, msgs.length-50);
-            await saveData({ messages:msgs, users:data.users||{} });
-            lastMsgCount = 0; await poll();
-            showNotif('Voice message bhej diya ✓');
-          } catch(e) { showNotif('Voice send nahi hua — recording bahut badi hai, 10 sec se kam rakho'); }
-        };
-        reader.readAsDataURL(blob);
+async function toggleRecord(){
+  if(!isRecording){
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      audioChunks=[];
+      // webm opus is best for Chrome/Android; ogg opus for Firefox
+      const mime=['audio/webm;codecs=opus','audio/ogg;codecs=opus','audio/webm','audio/ogg']
+        .find(t=>MediaRecorder.isTypeSupported(t))||'';
+      mediaRecorder=new MediaRecorder(stream,mime?{mimeType:mime}:{});
+      mediaRecorder.ondataavailable=e=>{if(e.data.size>0)audioChunks.push(e.data);};
+      mediaRecorder.onstop=async()=>{
+        stream.getTracks().forEach(t=>t.stop());
+        const mtype=mediaRecorder.mimeType||'audio/webm';
+        const blob=new Blob(audioChunks,{type:mtype});
+        showNotif('Upload ho raha hai...',10000);
+        try{
+          const fd=new FormData();
+          fd.append('file',blob,'voice.webm');
+          fd.append('upload_preset',PRESET);
+          // Upload as raw resource type to preserve original format
+          const res=await fetch(`https://api.cloudinary.com/v1_1/${CLOUD}/raw/upload`,{method:'POST',body:fd});
+          const json=await res.json();
+          if(!json.secure_url)throw new Error(JSON.stringify(json));
+          const audioUrl=json.secure_url;
+          const data=await fetchData();
+          const msgs=data.messages||[];
+          msgs.push({senderId:me.id,senderName:me.name,floor:me.floor,role:me.role,text:'🎙️ Voice message',type:'voice',audioUrl,mimeType:mtype,ts:Date.now()});
+          if(msgs.length>100)msgs.splice(0,msgs.length-100);
+          await saveData({messages:msgs,users:data.users||{}});
+          lastMsgCount=0;await poll();
+          showNotif('Voice message bhej diya ✓');
+        }catch(e){console.error(e);showNotif('Upload failed: '+e.message);}
       };
       mediaRecorder.start(100);
-      isRecording = true; recSec = 0;
+      isRecording=true;recSec=0;
       document.getElementById('rec-btn').classList.add('recording');
-      document.getElementById('rec-btn').textContent = '⏹️';
-      document.getElementById('rec-status').style.display = 'block';
-      document.getElementById('rec-hint').style.display = 'none';
-      recTimer = setInterval(() => {
+      document.getElementById('rec-btn').textContent='⏹️';
+      document.getElementById('rec-status').style.display='block';
+      document.getElementById('rec-hint').style.display='none';
+      recTimer=setInterval(()=>{
         recSec++;
-        document.getElementById('rec-timer').textContent = `${recSec}s / 15s`;
-        if (recSec >= 15) toggleRecord(); // auto stop
-      }, 1000);
-    } catch(e) { showNotif('Microphone allow karo — browser settings mein jaao'); }
-  } else {
-    mediaRecorder.stop(); isRecording = false;
+        document.getElementById('rec-timer').textContent=`${recSec}s / 30s`;
+        if(recSec>=30)toggleRecord();
+      },1000);
+    }catch(e){showNotif('Microphone allow karo — browser settings mein');}
+  }else{
+    mediaRecorder.stop();isRecording=false;
     clearInterval(recTimer);
     document.getElementById('rec-btn').classList.remove('recording');
-    document.getElementById('rec-btn').textContent = '🎙️';
-    document.getElementById('rec-status').style.display = 'none';
-    document.getElementById('rec-timer').textContent = '';
-    document.getElementById('rec-hint').style.display = 'block';
-    showNotif('Processing...');
+    document.getElementById('rec-btn').textContent='🎙️';
+    document.getElementById('rec-status').style.display='none';
+    document.getElementById('rec-timer').textContent='';
+    document.getElementById('rec-hint').style.display='block';
   }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('msg-input').addEventListener('keydown', e => {
-    if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMsg('msg'); }
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('msg-input').addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg('msg');}
   });
 });
 </script>

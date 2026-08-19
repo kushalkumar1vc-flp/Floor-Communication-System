@@ -54,7 +54,7 @@ audio { width: 100%; height: 36px; margin-top: 4px; }
 .rec-info { display: flex; flex-direction: column; gap: 2px; }
 .rec-hint { font-size: 12px; color: #6b7280; }
 .rec-status { font-size: 12px; color: #dc2626; font-weight: 600; display: none; }
-.rec-timer { font-size: 12px; color: #374151; font-weight: 500; }
+.rec-timer { font-size: 13px; color: #374151; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -134,7 +134,7 @@ audio { width: 100%; height: 36px; margin-top: 4px; }
         <button onclick="sendMsg('broadcast')" class="btn-broadcast" id="bc-btn" style="display:none">📣 Broadcast</button>
       </div>
       <hr>
-      <div class="label">Voice message</div>
+      <div class="label">Voice message <span style="font-size:10px;color:#9ca3af;font-weight:400">(max 15 sec)</span></div>
       <div class="rec-row">
         <button class="btn-record" id="rec-btn" onclick="toggleRecord()">🎙️</button>
         <div class="rec-info">
@@ -160,8 +160,6 @@ audio { width: 100%; height: 36px; margin-top: 4px; }
 const BIN_ID = '6a85579ff5f4af5e29278636';
 const BIN_KEY = '$2a$10$hRmxzKWgTSABBO.CoSAEr.E3tuUnGSAG7lUbug.BQbX5bWtTaEKv.';
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-const CLOUD_NAME = 'wzrotfs5';
-const UPLOAD_PRESET = 'nvnw9tya';
 
 let me = null, pollTimer = null, lastMsgCount = 0, localMsgs = [];
 let mediaRecorder = null, audioChunks = [], recTimer = null, recSec = 0, isRecording = false;
@@ -243,9 +241,12 @@ function renderMsgs() {
     const cls = isOwn ? 'own' : m.type==='broadcast' ? 'broadcast' : m.type==='alert' ? 'alert' : '';
     const time = new Date(m.ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     const badge = m.type==='broadcast'?' 📣':m.type==='alert'?' 🚨':m.type==='voice'?' 🎙️':'';
-    const body = m.type==='voice' && m.audioUrl
-      ? `<audio controls src="${m.audioUrl}" type="audio/mpeg"></audio>`
-      : `<div class="msg-text">${m.text}</div>`;
+    let body = '';
+    if (m.type === 'voice' && m.audioData) {
+      body = `<audio controls src="${m.audioData}"></audio>`;
+    } else {
+      body = `<div class="msg-text">${m.text}</div>`;
+    }
     return `<div class="msg ${cls}">
       <button class="delete-btn" onclick="deleteMsg(${i})">✕</button>
       <div class="msg-meta">
@@ -264,8 +265,7 @@ async function deleteMsg(i) {
     const data = await fetchData();
     data.messages.splice(i, 1);
     await saveData(data);
-    lastMsgCount = 0;
-    await poll();
+    lastMsgCount = 0; await poll();
   } catch(e) { showNotif('Delete nahi hua'); }
 }
 
@@ -288,8 +288,7 @@ async function doLogin() {
     document.getElementById('my-role-lbl').style.display = 'inline';
     document.getElementById('bc-btn').style.display = 'block';
   }
-  lastMsgCount = 0;
-  await poll();
+  lastMsgCount = 0; await poll();
   pollTimer = setInterval(poll, 4000);
 }
 
@@ -328,15 +327,30 @@ async function toggleRecord() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunks = [];
-      const mimeType = MediaRecorder.isTypeSupported('audio/ogg;codecs=opus') ? 'audio/ogg;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
-      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-      mediaRecorder.ondataavailable = e => { if(e.data.size>0) audioChunks.push(e.data); };
+      // Pick best supported format
+      const mime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/ogg']
+        .find(t => MediaRecorder.isTypeSupported(t)) || '';
+      mediaRecorder = new MediaRecorder(stream, mime ? {mimeType: mime} : {});
+      mediaRecorder.ondataavailable = e => { if(e.data.size > 0) audioChunks.push(e.data); };
       mediaRecorder.onstop = async () => {
-        stream.getTracks().forEach(t=>t.stop());
-        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-        await uploadVoice(blob);
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+        // Convert to base64 data URL — works in all browsers directly
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const audioData = reader.result; // this is a data URL like "data:audio/webm;base64,..."
+          try {
+            const data = await fetchData();
+            const msgs = data.messages || [];
+            msgs.push({ senderId:me.id, senderName:me.name, floor:me.floor, role:me.role, text:'🎙️ Voice message', type:'voice', audioData, ts:Date.now() });
+            // Keep only last 20 msgs if voice msgs make it too big; voice msgs are ~50KB each
+            if (msgs.length > 50) msgs.splice(0, msgs.length-50);
+            await saveData({ messages:msgs, users:data.users||{} });
+            lastMsgCount = 0; await poll();
+            showNotif('Voice message bhej diya ✓');
+          } catch(e) { showNotif('Voice send nahi hua — recording bahut badi hai, 10 sec se kam rakho'); }
+        };
+        reader.readAsDataURL(blob);
       };
       mediaRecorder.start(100);
       isRecording = true; recSec = 0;
@@ -346,10 +360,10 @@ async function toggleRecord() {
       document.getElementById('rec-hint').style.display = 'none';
       recTimer = setInterval(() => {
         recSec++;
-        document.getElementById('rec-timer').textContent = `${recSec}s`;
-        if (recSec >= 60) toggleRecord();
+        document.getElementById('rec-timer').textContent = `${recSec}s / 15s`;
+        if (recSec >= 15) toggleRecord(); // auto stop
       }, 1000);
-    } catch(e) { showNotif('Microphone allow karo browser settings mein'); }
+    } catch(e) { showNotif('Microphone allow karo — browser settings mein jaao'); }
   } else {
     mediaRecorder.stop(); isRecording = false;
     clearInterval(recTimer);
@@ -358,31 +372,8 @@ async function toggleRecord() {
     document.getElementById('rec-status').style.display = 'none';
     document.getElementById('rec-timer').textContent = '';
     document.getElementById('rec-hint').style.display = 'block';
+    showNotif('Processing...');
   }
-}
-
-async function uploadVoice(blob) {
-  showNotif('Voice upload ho raha hai...');
-  try {
-    const fd = new FormData();
-    const ext = blob.type.includes('ogg') ? 'ogg' : 'webm';
-    fd.append('file', blob, `voice.${ext}`);
-    fd.append('upload_preset', UPLOAD_PRESET);
-    fd.append('eager', 'f_mp3');
-    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method:'POST', body:fd });
-    const json = await res.json();
-    if (!json.secure_url) { console.error(json); throw new Error('Upload failed'); }
-    // Request mp3 version from Cloudinary for universal playback
-    const base = json.secure_url.replace(/\/v\d+\//, '/f_mp3,q_auto/v1787140756/').replace(/\.[^.]+$/, '.mp3');
-    const audioUrl = json.secure_url.replace('/upload/', '/upload/f_mp3/').replace(/\.[^.]+$/, '.mp3');
-    const data = await fetchData();
-    const msgs = data.messages || [];
-    msgs.push({ senderId:me.id, senderName:me.name, floor:me.floor, role:me.role, text:'🎙️ Voice message', type:'voice', audioUrl, ts:Date.now() });
-    if (msgs.length > 100) msgs.splice(0, msgs.length-100);
-    await saveData({ messages:msgs, users:data.users||{} });
-    lastMsgCount = 0; await poll();
-    showNotif('Voice message bhej diya ✓');
-  } catch(e) { console.error(e); showNotif('Voice upload failed — dobara try karein'); }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

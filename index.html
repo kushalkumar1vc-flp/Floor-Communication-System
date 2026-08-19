@@ -244,7 +244,7 @@ function renderMsgs() {
     const time = new Date(m.ts).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     const badge = m.type==='broadcast'?' 📣':m.type==='alert'?' 🚨':m.type==='voice'?' 🎙️':'';
     const body = m.type==='voice' && m.audioUrl
-      ? `<audio controls src="${m.audioUrl}"></audio>`
+      ? `<audio controls src="${m.audioUrl}" type="audio/mpeg"></audio>`
       : `<div class="msg-text">${m.text}</div>`;
     return `<div class="msg ${cls}">
       <button class="delete-btn" onclick="deleteMsg(${i})">✕</button>
@@ -328,7 +328,10 @@ async function toggleRecord() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunks = [];
-      mediaRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg' });
+      const mimeType = MediaRecorder.isTypeSupported('audio/ogg;codecs=opus') ? 'audio/ogg;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+      mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       mediaRecorder.ondataavailable = e => { if(e.data.size>0) audioChunks.push(e.data); };
       mediaRecorder.onstop = async () => {
         stream.getTracks().forEach(t=>t.stop());
@@ -362,14 +365,16 @@ async function uploadVoice(blob) {
   showNotif('Voice upload ho raha hai...');
   try {
     const fd = new FormData();
-    // rename to mp3 so Cloudinary handles it broadly
-    fd.append('file', blob, 'voice.mp3');
+    const ext = blob.type.includes('ogg') ? 'ogg' : 'webm';
+    fd.append('file', blob, `voice.${ext}`);
     fd.append('upload_preset', UPLOAD_PRESET);
+    fd.append('eager', 'f_mp3');
     const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/video/upload`, { method:'POST', body:fd });
     const json = await res.json();
     if (!json.secure_url) { console.error(json); throw new Error('Upload failed'); }
-    // Force mp3 delivery URL for cross-browser playback
-    const audioUrl = json.secure_url.replace(/\.[^.]+$/, '.mp3');
+    // Request mp3 version from Cloudinary for universal playback
+    const base = json.secure_url.replace(/\/v\d+\//, '/f_mp3,q_auto/v1787140756/').replace(/\.[^.]+$/, '.mp3');
+    const audioUrl = json.secure_url.replace('/upload/', '/upload/f_mp3/').replace(/\.[^.]+$/, '.mp3');
     const data = await fetchData();
     const msgs = data.messages || [];
     msgs.push({ senderId:me.id, senderName:me.name, floor:me.floor, role:me.role, text:'🎙️ Voice message', type:'voice', audioUrl, ts:Date.now() });

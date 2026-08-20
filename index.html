@@ -143,9 +143,7 @@ audio{width:100%;margin-top:6px}
 </div>
 
 <script>
-// ========== YAHAN APNA URL DAALO ==========
 const API_URL = 'https://script.google.com/a/macros/flipkart.com/s/AKfycbwA6xqkpwFdoBBs5ZJtsfYD8L1ZmjN0IXzbhaqYnYYtGgz-8UNJb3dQDWYWdGgSh599pA/exec';
-// ==========================================
 
 let me=null,pollTimer=null,lastMsgIds=new Set(),localMsgs=[];
 let mediaRecorder=null,audioChunks=[],recTimer=null,recSec=0,isRecording=false;
@@ -175,30 +173,30 @@ function showNotif(txt,dur=3500){
 function initials(n){return n.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
 function floorCls(f){return{F1:'f1',F2:'f2',F3:'f3',F4:'f4'}[f]||'f1';}
 
-async function api(params){
-  const url=API_URL+'?'+new URLSearchParams(params);
-  const r=await fetch(url);
+async function apiGet(action){
+  const r=await fetch(API_URL+'?action='+action, {redirect:'follow'});
   return r.json();
 }
 async function apiPost(body){
-  const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const r=await fetch(API_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify(body),
+    redirect:'follow'
+  });
   return r.json();
 }
 
 async function poll(){
   if(!me)return;
   try{
-    // heartbeat
     apiPost({action:'heartbeat',id:me.id,name:me.name,floor:me.floor,role:me.role,ts:Date.now()});
-    
-    // get users
-    const users=await api({action:'getUsers'});
+    const [users,msgs]=await Promise.all([apiGet('getUsers'),apiGet('getMessages')]);
+
     document.getElementById('online-list').innerHTML=users.length
       ?users.map(u=>`<span class="online-pill"><span class="floor-badge ${floorCls(u.floor)}" style="font-size:10px">${u.floor}</span> ${u.name}${u.role==='supervisor'?' 👑':''}</span>`).join('')
       :'<span style="font-size:12px;color:#9ca3af">Sirf aap online hain</span>';
 
-    // get messages
-    const msgs=await api({action:'getMessages'});
     const newMsgs=msgs.filter(m=>!lastMsgIds.has(String(m.id)));
     newMsgs.forEach(m=>{
       if(String(m.senderId)!==String(me.id)){
@@ -207,10 +205,7 @@ async function poll(){
       }
       lastMsgIds.add(String(m.id));
     });
-    if(newMsgs.length>0||localMsgs.length!==msgs.length){
-      localMsgs=msgs;
-      renderMsgs();
-    }
+    if(newMsgs.length>0||localMsgs.length!==msgs.length){localMsgs=msgs;renderMsgs();}
   }catch(e){console.error(e);}
 }
 
@@ -225,16 +220,9 @@ function renderMsgs(){
     const cls=isOwn?'own':m.type==='broadcast'?'broadcast':m.type==='alert'?'alert':'';
     const time=new Date(Number(m.ts)).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
     const badge=m.type==='broadcast'?' 📣':m.type==='alert'?' 🚨':m.type==='voice'?' 🎙️':'';
-    let body='';
-    if(m.type==='voice'&&m.audioUrl){
-      body=`<audio controls preload="none">
-        <source src="${m.audioUrl}" type="audio/webm;codecs=opus">
-        <source src="${m.audioUrl}" type="audio/webm">
-        <source src="${m.audioUrl}" type="audio/ogg">
-      </audio>`;
-    }else{
-      body=`<div class="msg-text">${m.text}</div>`;
-    }
+    const body=m.type==='voice'&&m.audioUrl
+      ?`<audio controls src="${m.audioUrl}"></audio>`
+      :`<div class="msg-text">${m.text}</div>`;
     return `<div class="msg ${cls}">
       <button class="delete-btn" onclick="deleteMsg('${m.id}')">✕</button>
       <div class="msg-meta">
@@ -249,8 +237,12 @@ function renderMsgs(){
 
 async function deleteMsg(id){
   if(!confirm('Delete karein?'))return;
-  try{await apiPost({action:'deleteMessage',id});localMsgs=localMsgs.filter(m=>String(m.id)!==String(id));lastMsgIds.delete(String(id));renderMsgs();}
-  catch(e){showNotif('Delete nahi hua');}
+  try{
+    await apiPost({action:'deleteMessage',id});
+    localMsgs=localMsgs.filter(m=>String(m.id)!==String(id));
+    lastMsgIds.delete(String(id));
+    renderMsgs();
+  }catch(e){showNotif('Delete nahi hua');}
 }
 
 async function doLogin(){
@@ -314,16 +306,11 @@ async function toggleRecord(){
         stream.getTracks().forEach(t=>t.stop());
         const blob=new Blob(audioChunks,{type:mediaRecorder.mimeType||'audio/webm'});
         showNotif('Voice upload ho raha hai...',10000);
-        // Convert to base64
         const reader=new FileReader();
         reader.onload=async()=>{
           const b64=reader.result.split(',')[1];
           try{
-            const res=await apiPost({
-              action:'sendVoice',
-              senderId:me.id,senderName:me.name,floor:me.floor,role:me.role,
-              audioBase64:b64,fileName:'voice.webm',ts:Date.now()
-            });
+            const res=await apiPost({action:'sendVoice',senderId:me.id,senderName:me.name,floor:me.floor,role:me.role,audioBase64:b64,ts:Date.now()});
             if(res.ok){showNotif('Voice message bhej diya ✓');await poll();}
             else showNotif('Upload failed');
           }catch(e){showNotif('Upload nahi hua');}
@@ -352,12 +339,6 @@ async function toggleRecord(){
     document.getElementById('rec-hint').style.display='block';
   }
 }
-
-document.addEventListener('DOMContentLoaded',()=>{
-  document.getElementById('msg-input').addEventListener('keydown',e=>{
-    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMsg('msg');}
-  });
-});
 </script>
 </body>
 </html>
